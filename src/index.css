@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Lato", sans-serif;
+  --font-display: "Playfair Display", serif;
+}
+
+/* ─── CUSTOM TAILWIND v4 FIX ───────────────────────────────────────────────────── */
+/* Manaki customized zoom and infinite scroll animation kavali kabatti,
+   maname manually classes create chesi andulo css optimization cheyali. */
+
+@layer components {
+  /* 1. INFINITE SCROLL TRACK (Right to Left) */
+  .gallery-track {
+    display: flex;
+    animation: galleryScroll 40s linear infinite; /* Adjust time to change speed */
+  }
+
+  /* 2. PAUSE SCROLL ON HOVER */
+  .gallery-track.paused {
+    animation-play-state: paused;
+  }
+
+  /* 3. ZOOM ON CARD HOVER (1:1.15 ratio) */
+  .gallery-card {
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s ease, border-color 0.25s ease !important;
+  }
+
+  .gallery-card:hover {
+    transform: scale(1.15) !important; /* Increase this to 1.25 for more zoom */
+    box-shadow: 0 0 28px 6px rgba(201,168,76,0.35), 0 20px 48px rgba(0,0,0,0.35) !important;
+    border-color: #E8C97A !important;
+  }
+
+  /* Icon Animation on hover */
+  .gallery-card:hover .icon {
+    transform: scale(1.18) translateY(-4px) !important;
+    filter: drop-shadow(0 0 12px #C9A84C) !important;
+  }
+}
+
+/* ─── @KEYFRAMES (Manual CSS) ────────────────────────────────────────────────────── */
+@keyframes galleryScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(var(--gallery-loop-width)); }
+}
