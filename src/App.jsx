@@ -1048,11 +1048,6 @@ function Gallery({ dark }) {
           ))}
         </div>
 
-        {/* Fade edges */}
-        <div className="absolute top-0 left-0 w-28 h-full pointer-events-none z-20"
-          style={{ background: `linear-gradient(to right,${T.pageBg},transparent)` }} />
-        <div className="absolute top-0 right-0 w-28 h-full pointer-events-none z-20"
-          style={{ background: `linear-gradient(to left,${T.pageBg},transparent)` }} />
       </div>
 
     </section>

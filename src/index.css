@@ -5,6 +5,10 @@
   --font-display: "Playfair Display", serif;
 }
 
+body {
+  overflow-x: hidden;
+}
+
 /* ─── CUSTOM TAILWIND v4 FIX ───────────────────────────────────────────────────── */
 /* Manaki customized zoom and infinite scroll animation kavali kabatti,
    maname manually classes create chesi andulo css optimization cheyali. */
