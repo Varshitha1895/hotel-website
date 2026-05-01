@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { motion, useScroll, useTransform, useInView, AnimatePresence } from "framer-motion";
+import { motion, useScroll, useTransform, useInView, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
 import {
   Sun, Moon, Phone, Wifi, Zap, Car, ChevronLeft, ChevronRight,
   Star, Send, MessageCircle, Navigation, X, Check, Bed, Users,
@@ -128,6 +128,68 @@ function Reveal({ children, className = "", delay = 0, dir = "up" }) {
   );
 }
 
+function TextReveal({ text, className = "", delay = 0, style }) {
+  const words = text.split(" ");
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: "-40px" });
+  
+  const container = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1, delayChildren: delay },
+    },
+  };
+  
+  const child = {
+    visible: { opacity: 1, y: 0, transition: { type: "spring", damping: 16, stiffness: 120 } },
+    hidden: { opacity: 0, y: 24 },
+  };
+  
+  return (
+    <motion.div ref={ref} style={{ display: "inline-block", overflow: "hidden", ...style }} className={className} variants={container} initial="hidden" animate={inView ? "visible" : "hidden"}>
+      {words.map((word, index) => (
+        <motion.span variants={child} style={{ marginRight: "0.25em", display: "inline-block" }} key={index}>
+          {word}
+        </motion.span>
+      ))}
+    </motion.div>
+  );
+}
+
+function TiltCard({ children, className = "", style }) {
+  const ref = useRef(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  const mouseXSpring = useSpring(x, { stiffness: 150, damping: 20 });
+  const mouseYSpring = useSpring(y, { stiffness: 150, damping: 20 });
+  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["12deg", "-12deg"]);
+  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-12deg", "12deg"]);
+
+  const handleMouseMove = (e) => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    x.set(mouseX / width - 0.5);
+    y.set(mouseY / height - 0.5);
+  };
+
+  const handleMouseLeave = () => {
+    x.set(0);
+    y.set(0);
+  };
+
+  return (
+    <motion.div ref={ref} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}
+      style={{ rotateX, rotateY, transformStyle: "preserve-3d", ...style }} className={className}>
+      {children}
+    </motion.div>
+  );
+}
+
 function GoldDivider() {
   return (
     <div className="flex items-center justify-center gap-3 my-4">
@@ -144,7 +206,7 @@ function SecHead({ tag, title, sub, dark = false }) {
     <div className="text-center mb-16">
       <Reveal>
         <p className="uppercase tracking-[0.35em] text-xs font-bold mb-3" style={{ color:GOLD }}>{tag}</p>
-        <h2 className="font-display text-4xl md:text-5xl font-bold" style={{ color:T.text }}>{title}</h2>
+        <TextReveal text={title} className="font-display text-4xl md:text-5xl font-bold block" style={{ color:T.text, marginBottom:"1rem" }} />
         <GoldDivider />
         {sub && <p className="text-base md:text-lg max-w-2xl mx-auto leading-relaxed mt-2" style={{ color:T.muted }}>{sub}</p>}
       </Reveal>
@@ -571,11 +633,14 @@ function Hero() {
     exit:     { opacity:0, y:-18, transition:{ duration:0.4 } },
   };
 
+  const bgY = useTransform(scrollYProgress, [0,1], ["0%", "20%"]);
+
   return (
     <section id="hero" ref={ref} className="relative h-screen min-h-[640px] overflow-hidden">
       {/* Background Image Carousel */}
       <AnimatePresence custom={dir} initial={false}>
         <motion.div key={`bg-${s.id}`} className="absolute inset-0"
+          style={{ y: bgY, height: "120%", top: "-10%" }}
           custom={dir} variants={bgV} initial="enter" animate="center" exit="exit">
           <div className="absolute inset-0 bg-black/50 z-10" />
           <img src={s.image} alt={s.h1} className="w-full h-full object-cover" />
@@ -597,31 +662,32 @@ function Hero() {
 
             <h1 className="font-display font-black text-white mb-4 leading-[0.9]"
               style={{ fontSize:"clamp(2.8rem,8vw,6.5rem)", textShadow:"0 6px 50px rgba(0,0,0,0.6)" }}>
-              {s.h1}<br />
-              <span style={{
+              <TextReveal key={`h1-${s.id}`} text={s.h1} delay={0.2} />
+              <br />
+              <TextReveal key={`h2-${s.id}`} text={s.h2} delay={0.4} style={{
                 background:`linear-gradient(135deg,${GOLD},${GOLD_LIGHT},${GOLD})`,
                 WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent",
                 filter:`drop-shadow(0 0 30px rgba(201,168,76,0.55))`,
-              }}>{s.h2}</span>
+              }} />
             </h1>
 
             <GoldDivider />
 
-            <p className="text-stone-100 text-base md:text-lg max-w-lg mx-auto mt-3 mb-10 font-light leading-relaxed">
-              {s.sub}
-            </p>
+            <div className="text-stone-100 text-base md:text-lg max-w-lg mx-auto mt-3 mb-10 font-light leading-relaxed">
+              <TextReveal key={`sub-${s.id}`} text={s.sub} delay={0.6} />
+            </div>
 
-            <div className="flex flex-wrap gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center">
               <motion.button whileHover={{ scale:1.06, boxShadow:`0 12px 40px rgba(201,168,76,0.5)` }}
                 whileTap={{ scale:0.96 }}
                 onClick={() => document.getElementById("booking")?.scrollIntoView({ behavior:"smooth" })}
-                className="px-10 py-4 rounded-xl font-black text-sm tracking-widest uppercase"
+                className="w-full sm:w-auto px-8 md:px-10 py-4 rounded-xl font-black text-xs md:text-sm tracking-widest uppercase"
                 style={{ background:`linear-gradient(135deg,${GOLD},${GOLD_LIGHT})`, color:DEEP_BLUE }}>
                 Reserve Now
               </motion.button>
               <motion.button whileHover={{ scale:1.06 }} whileTap={{ scale:0.96 }}
                 onClick={() => document.getElementById("rooms")?.scrollIntoView({ behavior:"smooth" })}
-                className="px-10 py-4 rounded-xl font-black text-sm tracking-widest uppercase border-2 text-white"
+                className="w-full sm:w-auto px-8 md:px-10 py-4 rounded-xl font-black text-xs md:text-sm tracking-widest uppercase border-2 text-white"
                 style={{ borderColor:"rgba(201,168,76,0.6)" }}>
                 View Rooms
               </motion.button>
@@ -707,20 +773,22 @@ function About({ dark }) {
                 style={{ borderColor:GOLD }} />
 
               <div className="relative rounded-3xl overflow-hidden" style={{ height:"460px" }}>
-                <img src="https://res.cloudinary.com/djuu7sxfw/image/upload/v1777568763/download_27_b4qywy.jpg" 
-                     alt="Hotel Sree Krishna Grand A/C" 
-                     className="absolute inset-0 w-full h-full object-cover" />
-                {/* Bottom text overlay */}
-                <div className="absolute bottom-0 left-0 right-0 h-32" style={{
-                  background:"linear-gradient(to top,rgba(6,12,22,0.95),transparent)"
-                }} />
-                <div className="absolute bottom-6 left-6 right-6">
-                  <p className="font-display text-white text-xl font-bold">Hotel Sree Krishna Grand A/C</p>
-                  <p className="text-xs tracking-widest uppercase mt-1" style={{ color:GOLD_LIGHT }}>Est. in Palvancha, Telangana</p>
-                  <div className="flex gap-1 mt-2">
-                    {[...Array(5)].map((_,i) => <Star key={i} size={13} fill={GOLD} color={GOLD} />)}
+                <TiltCard className="w-full h-full">
+                  <img src="https://res.cloudinary.com/djuu7sxfw/image/upload/v1777568763/download_27_b4qywy.jpg" 
+                       alt="Hotel Sree Krishna Grand A/C" 
+                       className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 hover:scale-110" />
+                  {/* Bottom text overlay */}
+                  <div className="absolute bottom-0 left-0 right-0 h-32" style={{
+                    background:"linear-gradient(to top,rgba(6,12,22,0.95),transparent)", transform: "translateZ(30px)"
+                  }} />
+                  <div className="absolute bottom-6 left-6 right-6" style={{ transform: "translateZ(50px)" }}>
+                    <p className="font-display text-white text-xl font-bold">Hotel Sree Krishna Grand A/C</p>
+                    <p className="text-xs tracking-widest uppercase mt-1" style={{ color:GOLD_LIGHT }}>Est. in Palvancha, Telangana</p>
+                    <div className="flex gap-1 mt-2">
+                      {[...Array(5)].map((_,i) => <Star key={i} size={13} fill={GOLD} color={GOLD} />)}
+                    </div>
                   </div>
-                </div>
+                </TiltCard>
               </div>
 
               {/* A/C badge */}
@@ -735,13 +803,13 @@ function About({ dark }) {
           {/* ══ RIGHT: Text ══ */}
           <div>
             <Reveal delay={0.1}>
-              <p className="text-lg leading-relaxed mb-5" style={{ color:T.muted }}>
-                Nestled in vibrant Palvancha, our hotel stands as a beacon of comfort and hospitality. We blend modern amenities with genuine Telugu warmth — creating an experience beyond mere accommodation.
-              </p>
-              <p className="text-lg leading-relaxed mb-8" style={{ color:T.muted }}>
-                Whether you're here for business, family travel, or a pilgrimage to nearby{" "}
-                <strong style={{ color:T.text }}>Bhadrachalam</strong>, every room is crafted with impeccable cleanliness and attentive service.
-              </p>
+              <div className="text-lg leading-relaxed mb-5" style={{ color:T.muted }}>
+                <TextReveal text="Nestled in vibrant Palvancha, our hotel stands as a beacon of comfort and hospitality. We blend modern amenities with genuine Telugu warmth — creating an experience beyond mere accommodation." delay={0.2} />
+              </div>
+              <div className="text-lg leading-relaxed mb-8" style={{ color:T.muted }}>
+                <TextReveal text="Whether you're here for business, family travel, or a pilgrimage to nearby" delay={0.4} />{" "}
+                <strong style={{ color:T.text }}>Bhadrachalam</strong>, <TextReveal text="every room is crafted with impeccable cleanliness and attentive service." delay={0.6} />
+              </div>
 
               <div className="grid grid-cols-2 gap-3 mb-8">
                 {["Spotless Cleanliness","Attentive Staff","Prime Location","24/7 Support"].map(pt => (
@@ -804,14 +872,13 @@ function OwnerVision() {
               </div>
             </div>
             <div>
-              <div className="text-8xl mb-2" style={{ color:GOLD, opacity:0.25, lineHeight:1, fontFamily:"Georgia" }}>"</div>
-              <p className="font-display text-2xl md:text-3xl text-white leading-relaxed mb-6 -mt-6">
-                My dream was to create a place where every guest feels the warmth of home, the comfort of luxury, and the trust of family.
-              </p>
+              <div className="font-display text-2xl md:text-3xl text-white leading-relaxed mb-6 -mt-6">
+                <TextReveal text="My dream was to create a place where every guest feels the warmth of home, the comfort of luxury, and the trust of family." delay={0.2} />
+              </div>
               <div className="h-px w-14 mb-5" style={{ background:GOLD }} />
-              <p className="text-blue-200 text-base leading-relaxed">
-                With a deep commitment to service excellence, our hotel was built as a promise — your stay will always be remembered with a smile.
-              </p>
+              <div className="text-blue-200 text-base leading-relaxed">
+                <TextReveal text="With a deep commitment to service excellence, our hotel was built as a promise — your stay will always be remembered with a smile." delay={0.4} />
+              </div>
               <div className="flex flex-wrap gap-2 mt-6">
                 {["Integrity","Warmth","Excellence","Trust"].map(v => (
                   <span key={v} className="px-4 py-1.5 rounded-full text-sm font-bold tracking-wide"
@@ -920,15 +987,18 @@ function Amenities() {
           className="grid grid-cols-2 md:grid-cols-4 gap-5">
           {AMENITIES.map(a => (
             <motion.div key={a.label}
-              variants={{ hidden:{ opacity:0, y:40 }, show:{ opacity:1, y:0, transition:{ duration:0.6 } } }}
-              whileHover={{ y:-8, scale:1.03 }} className="rounded-2xl p-6 text-center group"
-              style={{ background:"rgba(255,255,255,0.055)", border:"1px solid rgba(232, 229, 221, 0.2)", backdropFilter:"blur(10px)" }}>
-              <div className="w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center group-hover:scale-110 transition-transform"
-                style={{ background:"rgba(201,168,76,0.14)" }}>
-                <a.icon size={22} color={GOLD} />
-              </div>
-              <h3 className="font-display font-bold text-sm mb-1" style={{ color:GOLD_LIGHT }}>{a.label}</h3>
-              <p className="text-blue-300 text-xs leading-relaxed">{a.desc}</p>
+              variants={{ hidden:{ opacity:0, y:40 }, show:{ opacity:1, y:0, transition:{ duration:0.6 } } }}>
+              <TiltCard>
+                <div className="rounded-2xl p-6 text-center group transition-all duration-300 hover:shadow-2xl hover:border-transparent"
+                  style={{ background:"rgba(255,255,255,0.055)", border:"1px solid rgba(232, 229, 221, 0.2)", backdropFilter:"blur(10px)", transform: "translateZ(30px)" }}>
+                  <div className="w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center group-hover:scale-110 transition-transform"
+                    style={{ background:"rgba(201,168,76,0.14)" }}>
+                    <a.icon size={22} color={GOLD} />
+                  </div>
+                  <h3 className="font-display font-bold text-sm mb-1" style={{ color:GOLD_LIGHT }}>{a.label}</h3>
+                  <p className="text-blue-300 text-xs leading-relaxed">{a.desc}</p>
+                </div>
+              </TiltCard>
             </motion.div>
           ))}
         </motion.div>
@@ -1266,8 +1336,12 @@ function Booking({ dark, setConfetti }) {
     </div>
   );
 
+  const ref = useRef(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
+  const y = useTransform(scrollYProgress, [0, 1], ["-10%", "10%"]);
+
   return (
-    <section id="booking" className="py-24 px-4 transition-colors duration-500 relative overflow-hidden" style={{ background:T.pageBg }}>
+    <section id="booking" ref={ref} className="py-24 px-4 transition-colors duration-500 relative overflow-hidden" style={{ background:T.pageBg }}>
       <GoldDots count={12} className="absolute inset-0 pointer-events-none" />
       
       <div className="max-w-6xl mx-auto relative z-10">
@@ -1279,21 +1353,22 @@ function Booking({ dark, setConfetti }) {
                style={{ background: T.cardBg, border: `1px solid ${T.border}` }}>
             
             {/* LEFT SIDE: Image panel */}
-            <div className="lg:w-[45%] relative min-h-[300px] lg:min-h-auto">
-              <img src="https://res.cloudinary.com/djuu7sxfw/image/upload/v1777567339/luxurious_and_modern_bedroom_interior_design_gvpi4e.jpg" 
+            <div className="lg:w-[45%] relative min-h-[300px] lg:min-h-auto overflow-hidden">
+              <motion.img src="https://res.cloudinary.com/djuu7sxfw/image/upload/v1777567339/luxurious_and_modern_bedroom_interior_design_gvpi4e.jpg" 
                    alt="Luxury Bedroom" 
-                   className="absolute inset-0 w-full h-full object-cover" />
+                   style={{ y, height: "120%", top: "-10%" }}
+                   className="absolute inset-0 w-full object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0B1F3A] via-[#0B1F3A]/40 to-transparent opacity-95" />
               
               {/* Overlay Content */}
               <div className="absolute inset-0 p-10 flex flex-col justify-end">
                 <div className="w-12 h-1 mb-6 rounded-full" style={{ background: GOLD }} />
                 <h3 className="text-4xl font-display font-black text-white mb-3 leading-tight">
-                  Your Premium <br/>Escape Awaits
+                  <TextReveal text="Your Premium Escape Awaits" delay={0.2} />
                 </h3>
-                <p className="text-blue-100/80 text-sm leading-relaxed max-w-sm mb-8 font-semibold">
-                  Experience the perfect blend of luxury, comfort, and unmatched hospitality. Reserve directly with us for exclusive rates.
-                </p>
+                <div className="text-blue-100/80 text-sm leading-relaxed max-w-sm mb-8 font-semibold">
+                  <TextReveal text="Experience the perfect blend of luxury, comfort, and unmatched hospitality. Reserve directly with us for exclusive rates." delay={0.4} />
+                </div>
                 
                 <div className="flex gap-4 items-center">
                   <div className="flex -space-x-3">
@@ -1454,13 +1529,15 @@ function Contact({ dark }) {
           </div>
 
           <Reveal delay={0.15}>
-            <div className="rounded-3xl overflow-hidden shadow-2xl"
-              style={{ border:`2px solid rgba(201,168,76,0.3)`, height:420 }}>
-              <iframe title="Hotel Location"
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3832.0!2d80.7!3d17.5333!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a3349f63d5c3a97%3A0x1d9cd7c7d1c69c46!2sPalvancha%2C%20Telangana!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"
-                width="100%" height="100%" style={{ border:0 }} allowFullScreen loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade" />
-            </div>
+            <TiltCard className="w-full h-full">
+              <div className="rounded-3xl overflow-hidden shadow-2xl transition-transform duration-300"
+                style={{ border:`2px solid rgba(201,168,76,0.3)`, height:420, transform: "translateZ(30px)" }}>
+                <iframe title="Hotel Location"
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3832.0!2d80.7!3d17.5333!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3a3349f63d5c3a97%3A0x1d9cd7c7d1c69c46!2sPalvancha%2C%20Telangana!5e0!3m2!1sen!2sin!4v1700000000000!5m2!1sen!2sin"
+                  width="100%" height="100%" style={{ border:0 }} allowFullScreen loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade" />
+              </div>
+            </TiltCard>
             <p className="text-center text-xs mt-3 font-semibold" style={{ color:`${T.muted}88` }}>
               📍 KSP Road, Palvancha, Telangana — Find us on Google Maps
             </p>
@@ -1486,7 +1563,9 @@ function Footer() {
                 <p className="text-sm" style={{ color:GOLD }}>Palvancha, Telangana</p>
               </div>
             </div>
-            <p className="text-zinc-400 text-base leading-relaxed">Your trusted home away from home in Palvancha. Premium comfort, genuine hospitality.</p>
+            <div className="text-zinc-400 text-base leading-relaxed mt-2">
+              <TextReveal text="Your trusted home away from home in Palvancha. Premium comfort, genuine hospitality." delay={0.2} />
+            </div>
           </div>
           <div>
             <p className="font-bold text-sm uppercase tracking-widest mb-4" style={{ color:GOLD }}>Quick Links</p>
